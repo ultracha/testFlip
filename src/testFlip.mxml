@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+						xmlns:mx="library://ns.adobe.com/flex/mx"
+						xmlns:filters="flash.filters.*"
+						xmlns:rs="com.rubenswieringa.book.*"
+						creationComplete="onCreationComplete()"
+						layout="absolute" windowComplete="goFullScreen()"
+						showStatusBar="false"
+						height="1200" width="1920">
+
+
+
+	
+	<fx:Script>
+		<![CDATA[
+			import com.rubenswieringa.book.Book;
+			import com.rubenswieringa.book.BookEvent;
+			import com.rubenswieringa.book.Page;
+			
+			import flash.events.ServerSocketConnectEvent;
+			import flash.net.ServerSocket;
+			
+			import mx.core.FlexGlobals;
+			
+			[Embed(source='assets/style/icons/hard1.swf')]
+			private var hardBtnIcon1:Class;
+			[Embed(source='assets/style/icons/hard2.swf')]
+			private var hardBtnIcon2:Class;
+			
+			[Embed(source='assets/img/baduk/background.JPG')]
+			private var bgImg:Class;
+			
+			
+[Bindable]	private var tearBtnVisible:Boolean = false;
+[Bindable]	private var hardBtnIcon:Class = hardBtnIcon1;
+			
+[Bindable]	private var introText1:String = "The Book component is a feature-rich container class that creates an animated, interactive book from its contents. Flip through the next pages to learn about its features.<br /><br />This component was developed by Ruben Swieringa:";
+[Bindable]	private var introText2:String = "Many thanks go out to Theo Aartsma for letting me use his artwork for this demo, thanks man. Go check out his brand-new website:";
+[Bindable]	private var transparencyText:String = "The Book component supports transparent pages.\nFlip over the next two pages and notice that they only carry the color of the above image.";
+[Bindable]	private var tearingText:String = "Every page has a tear-property which can be set to true. Tear off this page by dragging the outer top corner to the bottom, or the outer bottom corner to the top.";
+[Bindable]	private var gotoPageText:String = "The gotoPage method lets you trigger a page-flip sequence by setting a target-page.";
+[Bindable]	private var hardText:String = "The hard-property of a page can be set to true to make that page hard-back.<br /><br />Furthermore, the Book component has a hardCover-property which can be set to true to make the first and last pages hard-back.";
+[Bindable]	private var liveBitmappingText:String = "Each page has a liveBitmapping feature that (when enabled) continuously updates its cached bitmap during pageflips. Notice how the animation on this page keeps playing during a pageflip.";
+[Bindable]	private var eventsText1:String = "The Book component broadcasts a range of events, featuring:";
+[Bindable]	private var eventsText2:String = "pageflipStarted<br />pageflipEnding<br />pageflipFinished<br />hoverStarted<br />hoverEnding<br />hoverFinished<br />pageTurned<br />pageNotTurned<br />pageTorn<br />bookOpened<br />bookClosed<br />statusChanged<br />contentChanged";
+[Bindable]  private var application:Object = FlexGlobals.topLevelApplication;
+						
+			// for socket...
+			private var server:ServerSocket = new ServerSocket();
+			private var inCommingSocket:Socket;
+			
+			private var bgLoader:Loader;
+			private var bgBitmapData:BitmapData;
+			private var bgImagePath = "background.jpg";
+			
+			// for timer...
+			private var timer:Timer;
+			private var count:int;
+			
+			private function onCreationComplete ():void {
+
+				myBook.addEventListener(BookEvent.PAGE_TORN, onPageTorn);
+				server.addEventListener(Event.CONNECT, onConnect);
+				server.bind(8888);
+				server.listen();
+				
+			//	bgLoader = new Loader();
+			//	bgLoader.contentLoaderInfo.addEventListener(Event.COMPLETE, bgLoadingComplete, false, 0, true);
+			//	bgLoader.load(new URLRequest(bgImagePath));
+			//}
+			
+			//private function bgLoadingComplete(event:Event):void {
+				var image:Bitmap = new bgImg();
+				
+				bgBitmapData = image.bitmapData.clone();
+				//bgBitmapData.draw(bgLoader);
+				
+				bgCanvas.graphics.beginBitmapFill(bgBitmapData);
+				bgCanvas.graphics.drawRect(0, 0, 1920, 1200);//stage.stageWidth, stage.stageHeight);
+				bgCanvas.graphics.endFill();		
+				
+				count = 0;
+				timer = new Timer(1000);
+				timer.addEventListener(TimerEvent.TIMER, onTimer);
+				timer.start();
+				
+			}
+			
+			
+			private function onTimer(evt:TimerEvent):void {
+				
+				if (count > 30)	{ // goto first page...
+				
+					count = 0;
+					if (true == myBook.setCurrentPage(1)){						
+						myBook.gotoPage(0, false);
+					}
+				}
+				else {
+					count++;
+				}
+			}
+			
+			
+			private function onConnect(e:ServerSocketConnectEvent):void
+			{
+				inCommingSocket = e.socket;
+				
+				inCommingSocket.addEventListener(Event.CLOSE, onSocketClose);
+				inCommingSocket.addEventListener(ProgressEvent.SOCKET_DATA, onClientSocketData);
+				
+			}
+			
+			private function onClientSocketData(e:ProgressEvent):void {
+				var buffer:ByteArray = new ByteArray();
+				inCommingSocket.readBytes(buffer, 0, inCommingSocket.bytesAvailable);
+				
+				var msg:String = buffer.toString();
+			
+				if (msg == "prv"){
+					count = 0;
+					myBook.prevPage();
+				}
+				else if (msg == "next"){
+					count = 0;
+					myBook.nextPage();
+				}
+			}
+			
+			private function onSocketClose(event:Event):void {
+				
+			}
+			
+
+			private function goFullScreen():void{
+			
+				//if($fullScreen){
+					this.stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
+					this.stage.scaleMode = StageScaleMode.NO_SCALE;// .NO_SCALE;// .EXACT_FIT; 
+			
+				//} else {
+				//	this.stage.displayState = StageDisplayState.NORMAL;
+				//}
+			}
+			
+			private function onPageTorn (event:BookEvent):void {
+//				if (myBook.pages.getItemIndex(tearablePage1) == -1){
+//					tearBtnVisible = true;
+//				}
+			}
+			
+		 	private function addTearable ():void {
+//				myBook.addChildAt(tearablePage2, 10);
+//				myBook.addChildAt(tearablePage1, 10);
+			}
+			
+			private function toggleHard (page:Page):void {
+//				hard_btn.toolTip = (page.hard) ? "make next page hard" : "make next page fluid";
+//				hardBtnIcon = (page.hard) ? hardBtnIcon1 : hardBtnIcon2;
+//				page.hard = !page.hard;
+//				hard_btn.invalidateDisplayList();
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<mx:Canvas id="bgCanvas" height="1200" width="1920" />
+	<!-- BOOK STARTS HERE -->
+	<!--<rs:Book id="myBook" x="{Math.round(application.width/2-400)}" y="50" width="800" height="530" -->
+	
+	<rs:Book id="myBook" x="184" y="0" width="1552" height="1200" 
+		openAt="0" autoFlipDuration="10" easing="0.7" regionSize="150"
+		sideFlip="true" hardCover="true" hover="true" snap="false" flipOnClick="true">
+		
+		
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/front.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/0.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/1.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/2.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/3.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/4.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/5.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/6.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/7.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/8.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/9.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/10.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/11.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/12.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/13.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/14.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/15.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/16.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/17.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/18.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/19.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/20.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/21.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/22.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/23.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/24.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/25.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/26.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/27.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/28.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/29.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/30.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/31.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/32.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/33.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/34.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/35.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/36.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/37.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/38.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/39.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/40.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/41.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/42.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/43.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/44.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/45.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/46.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/47.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/48.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/49.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/50.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/51.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/52.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/53.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/54.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/55.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/56.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/57.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/58.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/59.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/60.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/61.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/62.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/63.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/64.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/65.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/66.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/67.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/68.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/69.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/70.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/71.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/72.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/73.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/74.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/75.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/76.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/77.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/78.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/79.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/80.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/81.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/82.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/83.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/84.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/85.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/86.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/87.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/88.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/89.jpg')" /> </rs:Page>
+		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/back.jpg')" /> </rs:Page>
+
+		
+	</rs:Book>
+	
+	<!-- BOOK ENDS HERE -->
+	
+	
+</mx:WindowedApplication>
