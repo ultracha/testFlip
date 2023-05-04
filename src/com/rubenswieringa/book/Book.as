@@ -284,7 +284,7 @@ package com.rubenswieringa.book {
 		 * @see	Book#regionSize
 		 * @private
 		 */
-		protected var _regionSize:uint = 150;
+		protected var _regionSize:uint = 1000;//150;
 		/**
 		 * @see	Book#status
 		 * @private
@@ -372,9 +372,9 @@ package com.rubenswieringa.book {
 			this.hover = true;
 			
 			// add event listener:
-			this.addEventListener(MouseEvent.CLICK, this.nextPage);//this.startPageFlip);
-			this.addEventListener(MouseEvent.MIDDLE_CLICK, this.prevPage);
-			
+//			this.addEventListener(MouseEvent.CLICK, this.nextPage);//this.startPageFlip);
+//			this.addEventListener(MouseEvent.MIDDLE_CLICK, this.prevPage);
+			this.addEventListener(MouseEvent.MOUSE_DOWN, this.startPageFlip);
 		}
 		
 		
@@ -584,6 +584,9 @@ package com.rubenswieringa.book {
 		 * @private
 		 */
 		protected function dragPageCorner (event:Event=null):void {
+						
+			//. 
+			if (this._pages.length == 0) return;
 			
 			// stop if the startPageFlip() or endPageFlip() have not been executed:
 			if (this._status != BookEvent.PAGEFLIP_STARTED	&& this._status != BookEvent.HOVER_STARTED && 
@@ -896,7 +899,7 @@ package com.rubenswieringa.book {
 		}
 		
 		public function setCurrentPage(value:int):Boolean{
-			if (this._currentPage == -1) return false;
+			//if (this._currentPage == -1) return false;
 			this._currentPage = value;
 			return true;
 		}

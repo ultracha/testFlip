@@ -1,0 +1,39 @@
+실행방법
+
+1. 압축 해제 
+ - 폴더 : bin, books, runtimes
+ - 파일 : FlipBook.xml, FlipBookTouch.bat, testFlip.swf
+
+2. 실행
+ - FlipBookTouch.bat 실행
+ - 실행시 adobe air가 설치되어 있는지 여부 확인 필요
+
+
+Book 추가 방법
+1. books 폴더
+ - 책 보관 폴더
+ - 01, 02 이름으로 책이 보관되어 있습니다.
+ - back.png, book_back.png 파일은 설정파일이기 때문에 삭제하시거나 옮기시면 안됩니다.
+ - books.xml 책 설정 파일
+
+2. 책 설정
+ - books.xml 편집하여 책 설정하실 수 있습니다. 
+ - 기본 구조는 표현되어 있으며 해당 섹션만 채워넣거나 추가 하시면 됩니다.
+
+3. 책 추가
+ - 
+<books>
+ <count>2</count> => 여기의 숫자를 변경
+
+ <01>9</01> => 01 의 의미는 첫번째 책을 의미, 중간 숫자 값은 페이지 값을 의미
+
+ - 예) 30페이지의 책 추가
+<books>
+ <count>3</count>
+ <currentBook>0</currentBook>
+ <01>9</01>
+ <02>3</02>
+ <03>30</03>
+</books>
+
+이런식으로 추가하시면 됩니다.

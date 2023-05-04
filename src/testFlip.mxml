@@ -6,7 +6,7 @@
 						creationComplete="onCreationComplete()"
 						layout="absolute" windowComplete="goFullScreen()"
 						showStatusBar="false"
-						height="1200" width="1920">
+						height="900" width="1440">
 
 
 
@@ -17,9 +17,10 @@
 			import com.rubenswieringa.book.BookEvent;
 			import com.rubenswieringa.book.Page;
 			
-			import flash.events.ServerSocketConnectEvent;
-			import flash.net.ServerSocket;
+			import flash.filesystem.File;
 			
+			import mx.containers.Canvas;
+			import mx.controls.Image;
 			import mx.core.FlexGlobals;
 			
 			[Embed(source='assets/style/icons/hard1.swf')]
@@ -27,43 +28,62 @@
 			[Embed(source='assets/style/icons/hard2.swf')]
 			private var hardBtnIcon2:Class;
 			
-			[Embed(source='assets/img/baduk/background.JPG')]
+			[Embed(source='assets/img/baduk/main_back.png')]
 			private var bgImg:Class;
+			[Embed(source='assets/img/baduk/main_outline.png')]
+			private var bgOutlineImg:Class;
 			
 			
 [Bindable]	private var tearBtnVisible:Boolean = false;
 [Bindable]	private var hardBtnIcon:Class = hardBtnIcon1;
 			
-[Bindable]	private var introText1:String = "The Book component is a feature-rich container class that creates an animated, interactive book from its contents. Flip through the next pages to learn about its features.<br /><br />This component was developed by Ruben Swieringa:";
-[Bindable]	private var introText2:String = "Many thanks go out to Theo Aartsma for letting me use his artwork for this demo, thanks man. Go check out his brand-new website:";
-[Bindable]	private var transparencyText:String = "The Book component supports transparent pages.\nFlip over the next two pages and notice that they only carry the color of the above image.";
-[Bindable]	private var tearingText:String = "Every page has a tear-property which can be set to true. Tear off this page by dragging the outer top corner to the bottom, or the outer bottom corner to the top.";
-[Bindable]	private var gotoPageText:String = "The gotoPage method lets you trigger a page-flip sequence by setting a target-page.";
-[Bindable]	private var hardText:String = "The hard-property of a page can be set to true to make that page hard-back.<br /><br />Furthermore, the Book component has a hardCover-property which can be set to true to make the first and last pages hard-back.";
-[Bindable]	private var liveBitmappingText:String = "Each page has a liveBitmapping feature that (when enabled) continuously updates its cached bitmap during pageflips. Notice how the animation on this page keeps playing during a pageflip.";
-[Bindable]	private var eventsText1:String = "The Book component broadcasts a range of events, featuring:";
-[Bindable]	private var eventsText2:String = "pageflipStarted<br />pageflipEnding<br />pageflipFinished<br />hoverStarted<br />hoverEnding<br />hoverFinished<br />pageTurned<br />pageNotTurned<br />pageTorn<br />bookOpened<br />bookClosed<br />statusChanged<br />contentChanged";
 [Bindable]  private var application:Object = FlexGlobals.topLevelApplication;
-						
-			// for socket...
-			private var server:ServerSocket = new ServerSocket();
-			private var inCommingSocket:Socket;
-			
+									
 			private var bgLoader:Loader;
 			private var bgBitmapData:BitmapData;
-			private var bgImagePath = "background.jpg";
+			private var bgOutlineData:BitmapData;
 			
 			// for timer...
 			private var timer:Timer;
 			private var count:int;
 			
-			private function onCreationComplete ():void {
+			// 책장 Coord
+			public var arrayX:Array = new Array(10);
+			public var arrayY:Array = new Array(10);
+			
+			// book info
+			public var bookCount:int;
+			public var pageCountArray:Array = new Array(10);
+			public var currentBook:int = 0;
+			public var bookmode:Boolean = false;
+			public var pagecount:int = 0;
+			public var pagerealcount:int = 0;
+			public var bTimer:Boolean = false;
+			
+			protected var pageArray:Array;
+			protected var pagewidth:Number = 0;
+			protected var pageheight:Number = 0;
 
-				myBook.addEventListener(BookEvent.PAGE_TORN, onPageTorn);
-				server.addEventListener(Event.CONNECT, onConnect);
-				server.bind(8888);
-				server.listen();
+			public var myBook:Book;
+			private var bookBack:Image;// = new Image();
+			private var backbtn:Image;// = new Image();
+//			private var waiting:Image;
+//			private var bgCanvas:Canvas;
+			
+			private function onCreationComplete ():void {
 				
+//				bookBack.source = "books/book_back.png";
+//				backbtn.source = "books/back.png";
+
+				arrayX[0] = 93; arrayX[1] = 380; arrayX[2] = 660; arrayX[3] = 940; arrayX[4] = 1220;
+				arrayX[5] = 93; arrayX[6] = 380; arrayX[7] = 660; arrayX[8] = 940; arrayX[9] = 1220;
+				arrayY[0] = 168; arrayY[1] = 168; arrayY[2] = 168; arrayY[3] = 168; arrayY[4] = 168;
+				arrayY[5] = 498; arrayY[6] = 498; arrayY[7] = 498; arrayY[8] = 498; arrayY[9] = 498;
+
+				this.addEventListener(MouseEvent.CLICK, MouseClickHandler);//this.startPageFlip);
+
+				
+			
 			//	bgLoader = new Loader();
 			//	bgLoader.contentLoaderInfo.addEventListener(Event.COMPLETE, bgLoadingComplete, false, 0, true);
 			//	bgLoader.load(new URLRequest(bgImagePath));
@@ -71,66 +91,204 @@
 			
 			//private function bgLoadingComplete(event:Event):void {
 				var image:Bitmap = new bgImg();
+				var image_outline:Bitmap = new bgOutlineImg();
+				
+				bgOutlineData = image_outline.bitmapData.clone();
 				
 				bgBitmapData = image.bitmapData.clone();
-				//bgBitmapData.draw(bgLoader);
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 47, 164));
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 328, 164));
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 608, 164));
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 888, 164));
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 1168, 164));
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 47, 494));
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 328, 494));
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 608, 494));
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 888, 494));
+				bgBitmapData.draw(bgOutlineData, new Matrix(1,0,0,1, 1168, 494));
+
+				// Book 정보를 가져온다.
+				loadXMLInfo();
 				
 				bgCanvas.graphics.beginBitmapFill(bgBitmapData);
-				bgCanvas.graphics.drawRect(0, 0, 1920, 1200);//stage.stageWidth, stage.stageHeight);
-				bgCanvas.graphics.endFill();		
+				bgCanvas.graphics.drawRect(0, 0, 1440, 900);//stage.stageWidth, stage.stageHeight);
+				bgCanvas.graphics.endFill();	
+
+//				bgCanvas.graphics.beginBitmapFill(bgOutlineData);
+//				bgCanvas.graphics.draw
+//				bgCanvas.graphics.drawRect(0, 0, 232, 192);
+//				bgCanvas.graphics.endFill();
 				
-				count = 0;
-				timer = new Timer(1000);
+//				count = 0;
+				timer = new Timer(100);
 				timer.addEventListener(TimerEvent.TIMER, onTimer);
 				timer.start();
 				
 			}
 			
-			
-			private function onTimer(evt:TimerEvent):void {
+			public function MouseClickHandler(event:MouseEvent):void{
+				// 책 위에 click 되었는지 여부 확인
 				
-				if (count > 30)	{ // goto first page...
+				if (bookmode) return;
 				
-					count = 0;
-					if (true == myBook.setCurrentPage(1)){						
-						myBook.gotoPage(0, false);
+				var maxx:int = arrayX[bookCount-1] + 130;
+				var maxy:int = arrayY[bookCount -1] + 184;
+				
+				var idx:int = -1;
+				var localX:int = event.localX;
+				var localY:int = event.localY;
+				if (localX > maxx || localY > maxy) return;
+				if (localX < arrayX[0] || localY < arrayY[0]) return;
+				
+				
+				for (var i:int = 0; i < 10; i++)
+				{
+					if (
+						(localX >= arrayX[i] && localX < arrayX[i] + 130) &&
+						(localY >= arrayY[i] && localY < arrayY[i] + 184))
+					{
+						idx = i;
+						break;
 					}
 				}
-				else {
-					count++;
-				}
+		 		trace (idx);
+				currentBook = idx;
+				// Scene 변환...
+				loadScene();
 			}
 			
+			private function loadXMLInfo():void {
+				var loader:URLLoader = new URLLoader();
+				//                                        loader.dataFormat = DataFormat .TEXT;
+				loader.addEventListener(Event.COMPLETE, completeHandler);
+				loader.load(new URLRequest("books/books.xml"));
+			}
 			
-			private function onConnect(e:ServerSocketConnectEvent):void
+			public function completeHandler(event:Event):void{
+				try{
+					var data:XML = new XML(event.target.data);
+					trace("------------------------< 파싱전 >------------------------");
+					trace(data);
+					bookCount = getItemValue(data, 0);
+					
+					for (var i:int = 0; i < bookCount; i++)
+					{
+						pageCountArray[i] = getItemValue(data, i + 2);
+					}
+					
+//					getTreeItemsByFolderType(data, "count");
+					trace("------------------------< 파싱후 >------------------------");
+					trace(bookCount);
+				}catch(error:TypeError){
+					trace("텍스트를 XML로 변하지 못하였습니다.");
+					trace(error.message);
+				}
+				
+				//bgBitmapData.draw(bgLoader);
+				
+				// book image load...
+				if (bookCount != 0){
+					for (var i:int = 0; i<bookCount; i++)
+					{
+						var item:Image = new Image();
+						if (i + 1 != 10){
+							var str:String = "books/0" + (i+1) + "/001.jpg";
+							item.source = "books/0" + (i+1) + "/001.jpg";
+						}
+						else { // 10번째의 경우
+							item.source = "books/"+(i+1) +"/001.jpg";
+						}				
+						//item.width = 130;
+//						item.height = 182;//184;
+						item.addEventListener(Event.COMPLETE, imgloadComplete);
+						item.load();
+						
+//						addChild(item);
+//						var bdata:Bitmap = item.content as Bitmap;
+//						bgBitmapData.draw(bdata.bitmapData, new Matrix(1,0,0,1, 51, 168));	
+					}			
+				}				
+			}
+			
+			public function imgloadComplete(event:Event):void{
+				
+				if (event.target.content == null) return;
+				
+				var idx:Number;
+				var bookidx:String = event.target.source;
+				var bdata:Bitmap = event.target.content as Bitmap;
+				var scale:Number = 182 / bdata.bitmapData.height; //0.075;
+				var matrix:Matrix = new Matrix();//1,0,0,1, 51 + (51 - (51 * 0.07)), 168);
+				matrix.scale(scale, scale);
+				
+				var bTmpData:BitmapData = new BitmapData(bdata.bitmapData.width * scale, bdata.bitmapData.height * scale);
+				bTmpData.draw(bdata.bitmapData, matrix);			
+				
+				var tmpstr:String = bookidx.substr(6, 2);
+				idx = parseInt(tmpstr);
+				bgBitmapData.draw(bTmpData, new Matrix(1,0,0,1, arrayX[idx -1], arrayY[idx -1]));	
+				
+			}
+			public static function getItemValue(data:XML, idx:int):int{
+				var attribute:XMLList = data.children();
+				
+				trace(attribute);//.@[attributeName]);
+				trace(attribute[idx]);
+				//trace(attribute.count);
+				return parseInt(attribute[idx], 10);
+			}
+			public static function getTreeItemsByFolderType(data:XML, attributeName:String, attributeValue:String):void
 			{
-				inCommingSocket = e.socket;
-				
-				inCommingSocket.addEventListener(Event.CLOSE, onSocketClose);
-				inCommingSocket.addEventListener(ProgressEvent.SOCKET_DATA, onClientSocketData);
-				
-			}
-			
-			private function onClientSocketData(e:ProgressEvent):void {
-				var buffer:ByteArray = new ByteArray();
-				inCommingSocket.readBytes(buffer, 0, inCommingSocket.bytesAvailable);
-				
-				var msg:String = buffer.toString();
-			
-				if (msg == "prv"){
-					count = 0;
-					myBook.prevPage();
+				var attributes:XMLList = data.children();
+				for(var i:int = attributes.length()-1; i>=0; i--)
+				{
+					if(attributes[i].@[attributeName] != attributeValue)
+					{
+						delete attributes[i];
+					}
 				}
-				else if (msg == "next"){
-					count = 0;
-					myBook.nextPage();
-				}
-			}
-			
-			private function onSocketClose(event:Event):void {
 				
 			}
-			
+			private function onTimer(evt:TimerEvent):void {
+				
+				if (bTimer == false) return;
+				if (pagecount + 1 == pageCountArray[currentBook] || pagecount == pagerealcount)
+				{
+					var scale:Number = 900 / pageheight;
+					myBook = new Book();
+					//x="184" y="0" width="1552" height="1200" 
+					//				openAt="0" autoFlipDuration="10" easing="0.7" regionSize="150"
+					//				sideFlip="true" hardCover="true" hover="true" snap="false" flipOnClick="true">
+					myBook.x = (1440 - ((pagewidth * scale) * 2)) / 2; //125;//159;
+					myBook.y = 0;
+					myBook.width = (pagewidth * scale) * 2;//1122;
+					myBook.height = 900;
+					myBook.openAt = 0;
+					myBook.autoFlipDuration = 10;
+					myBook.easing = 0.7;
+					myBook.regionSize = 500;//150;
+					myBook.sideFlip = true;
+					myBook.hardCover = true;
+					myBook.hover = true;
+					myBook.snap = false;
+					myBook.flipOnClick = true;
+					
+					for (var i:int = 0; i <= pagecount - 1; i++)// pageCountArray[currentBook]; i++)
+					{
+						myBook.addChild(pageArray[i]);
+					}
+					myBook.setCurrentPage(0);
+					addChild(myBook);
+					
+					myBook.addEventListener(BookEvent.PAGE_TORN, onPageTorn);
+					delete pageArray[pageCountArray[currentBook]];
+					//while (pageArray.length > 0) pageArray.shift();
+					bTimer = false;
+					pagewidth = 0;
+					pageheight = 0;
+//					this.removeChild(waiting);
+				}
+			}			
 
 			private function goFullScreen():void{
 			
@@ -160,116 +318,183 @@
 //				page.hard = !page.hard;
 //				hard_btn.invalidateDisplayList();
 			}
+			public function onBack(event:MouseEvent):void{
+				// back to title...
+//				bTimer = true;
+				myBook.removeAllChildren();
+				this.removeChild(bookBack);
+				backbtn.removeEventListener(MouseEvent.CLICK, onBack);
+				this.removeChild(backbtn);
+				this.removeChild(myBook);
+				
+				this.addEventListener(MouseEvent.CLICK, MouseClickHandler);
+				bookmode = false;
+			}
+			
+			public function loadScene():void {
+		
+				var appPath:File = File.applicationDirectory;
+				
+				pagecount = 0;
+				pagerealcount = 0;
+				bookmode = true;
+				
+				bookBack = new Image();
+				backbtn = new Image();
+//				waiting = new Image();
+				//			private var bgCanvas:Canvas;
+				bookBack.source = "books/book_back.png";
+				backbtn.source = "books/back.png";
+//				waiting.source = "books/waiting.png";
+				
+				
+				backbtn.x = 1306;
+				backbtn.y = 768;
+
+				this.removeEventListener(MouseEvent.CLICK, MouseClickHandler);//this.startPageFlip);
+				backbtn.addEventListener(MouseEvent.CLICK, onBack);
+				
+//				waiting.x = (1440 / 2) - (525 /2);
+//				waiting.y = (900 / 2) - (201 / 2);
+				
+				this.addChild(bookBack);
+				this.addChild(backbtn);
+//				this.addChild(waiting);
+				
+				
+				pageArray = new Array(pageCountArray[currentBook]);
+				
+				
+				for (var i:int = 0; i < pageCountArray[currentBook]; i++, pagerealcount++)
+				{
+					try {
+//					var page1:Page = new Page();
+					var item1:Image = new Image();
+					var tmpStr:String;
+					
+					if (currentBook + 1 == 10) {
+						tmpStr = "books/10/";
+					} else {
+						tmpStr = "books/0" + (currentBook + 1) + "/";
+					}
+					if (i + 1 < 10) {
+						item1.source = tmpStr + "00" + (i + 1) + ".jpg"; 
+					}
+					else if (i+1 < 100) {
+						item1.source = tmpStr + "0" + (i + 1) + ".jpg"; 						
+					}
+					else {
+						item1.source = tmpStr + (i + 1)  + ".jpg";
+					}
+
+					var strFilePath:String = appPath.nativePath + "/" + item1.source;//"/books/01/01.jpg";
+					var imgFile:File = new File(strFilePath);
+					if (imgFile.exists == false)
+					{
+						bTimer = true;
+						break;
+					}
+//					item1.width = 565;
+					item1.height = 900;
+//					var scale:Number = item1.height / 900;
+//					item1.scaleX = scale;
+//					item1.scaleY = scale;
+
+					item1.addEventListener(Event.COMPLETE, onAddPage);	
+				
+					
+						item1.load();
+					}catch (error:TypeError){
+				
+						bTimer = true;
+						break;
+					}
+				}
+				bTimer = true;
+								
+				//				bgCanvas.addChild(myBook);
+				
+			}
+			
+			public function onAddPage(event:Event):void{
+
+				if (event.target != null)
+				{
+					var page1:Page = new Page();
+					page1.addChild(event.target as Image);
+//				if (page1.height != 0)
+//				{
+//					var scale:Number = (900 / page1.height);
+//					page1.scaleX = scale;
+//					page1.scaleY = scale;
+//				}
+				
+					var idx:int = 0;
+					var tmpstr:String = event.target.source.substr(9, 3);
+					idx = parseInt(tmpstr);
+				
+					pageArray[idx - 1] = page1;
+					trace (event.target.source);
+					trace(event.target.getBounds(page1)); 
+					var rect:Rectangle = event.target.getBounds(page1);
+					if (pagewidth == 0)
+					{
+						pagewidth = rect.width;
+						pageheight = rect.height;
+					}
+					else if (pagewidth > rect.width)
+					{
+						pagewidth = rect.width;
+						pageheight = rect.height;
+					}
+					//pagewidth = page1. .width;
+					
+				}
+//				myBook.addChild(page1);				
+				
+/*				if (pagecount + 1 == pageCountArray[currentBook] || event.target == null)
+				{
+					myBook = new Book();
+					//x="184" y="0" width="1552" height="1200" 
+					//				openAt="0" autoFlipDuration="10" easing="0.7" regionSize="150"
+					//				sideFlip="true" hardCover="true" hover="true" snap="false" flipOnClick="true">
+					myBook.x = 159;
+					myBook.y = 0;
+					myBook.width = 1122;
+					myBook.height = 900;
+					myBook.openAt = 0;
+					myBook.autoFlipDuration = 10;
+					myBook.easing = 0.7;
+					myBook.regionSize = 150;
+					myBook.sideFlip = true;
+					myBook.hardCover = true;
+					myBook.hover = true;
+					myBook.snap = false;
+					myBook.flipOnClick = true;
+	
+					for (var i:int = 0; i <= pagecount; i++)// pageCountArray[currentBook]; i++)
+					{
+						myBook.addChild(pageArray[i]);
+					}
+					myBook.setCurrentPage(0);
+					addChild(myBook);
+					
+					myBook.addEventListener(BookEvent.PAGE_TORN, onPageTorn);
+					delete pageArray[pageCountArray[currentBook]];
+					//while (pageArray.length > 0) pageArray.shift();
+
+				}
+				else {
+					pagecount++;
+				}
+					*/
+				pagecount++;
+			}
 			
 		]]>
 	</fx:Script>
 	
-	<mx:Canvas id="bgCanvas" height="1200" width="1920" />
-	<!-- BOOK STARTS HERE -->
-	<!--<rs:Book id="myBook" x="{Math.round(application.width/2-400)}" y="50" width="800" height="530" -->
-	
-	<rs:Book id="myBook" x="184" y="0" width="1552" height="1200" 
-		openAt="0" autoFlipDuration="10" easing="0.7" regionSize="150"
-		sideFlip="true" hardCover="true" hover="true" snap="false" flipOnClick="true">
-		
-		
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/front.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/0.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/1.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/2.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/3.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/4.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/5.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/6.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/7.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/8.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/9.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/10.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/11.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/12.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/13.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/14.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/15.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/16.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/17.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/18.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/19.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/20.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/21.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/22.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/23.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/24.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/25.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/26.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/27.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/28.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/29.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/30.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/31.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/32.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/33.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/34.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/35.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/36.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/37.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/38.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/39.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/40.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/41.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/42.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/43.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/44.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/45.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/46.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/47.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/48.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/49.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/50.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/51.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/52.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/53.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/54.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/55.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/56.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/57.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/58.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/59.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/60.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/61.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/62.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/63.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/64.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/65.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/66.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/67.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/68.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/69.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/70.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/71.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/72.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/73.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/74.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/75.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/76.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/77.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/78.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/79.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/80.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/81.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/82.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/83.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/84.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/85.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/86.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/87.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/88.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/89.jpg')" /> </rs:Page>
-		<rs:Page> <mx:Image source="@Embed('assets/img/baduk/back.jpg')" /> </rs:Page>
+	<mx:Canvas id="bgCanvas" height="900" width="1440" />
 
-		
-	</rs:Book>
-	
-	<!-- BOOK ENDS HERE -->
-	
 	
 </mx:WindowedApplication>
